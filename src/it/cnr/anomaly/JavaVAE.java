@@ -177,10 +177,13 @@ public class JavaVAE {
 		String encoded = MathOperations.encodeStrings(variables);
 
 		System.out.println("Encoded: " + encoded);
-		File cacheModel = new File(outputFolder, "model_norm_" + features.length + "X" + features[0].length + "_" + encoded + ".bin");
-		File classificationFile = new File(outputFolder, 
-				"classification_" + features.length + "X" + features[0].length + "_" + encoded + ".csv");
-
+		//File cacheModel = new File(outputFolder, "model_norm_" + features.length + "X" + features[0].length + "_" + encoded + ".bin");
+		//File classificationFile = new File(outputFolder, 
+			//	"classification_" + features.length + "X" + features[0].length + "_" + encoded + ".csv");
+		
+		File cacheModel = new File(outputFolder, "model.bin");
+		File classificationFile = new File(outputFolder,"classification.csv");
+		
 		AnomalyDetectionVariationalAutoEncoder vae = new AnomalyDetectionVariationalAutoEncoder();
 		double[][] features01 = vae.mn.normalize(features, null);
 		vae.train(features01, nHidden, nEpochs, null);
@@ -199,8 +202,7 @@ public class JavaVAE {
 		double[][] features01 = vae.mn.renormalize(features);
 		vae.test(features01, reconstructionNumSamples);
 		String encoded = MathOperations.encodeStrings(variables);
-		File classificationFile = new File(outputFolder, 
-				"classification_test_" + features.length + "X" + features[0].length + "_" + encoded + ".csv");
+		File classificationFile = new File(outputFolder,"classification_projection.csv");
 
 		String [] classifications = vae.classify();
 		saveClassification(features,variables, vae.final_scores, classifications, classificationFile);
