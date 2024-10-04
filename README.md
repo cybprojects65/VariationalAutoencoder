@@ -45,3 +45,8 @@ from the project folder (you need to install [ANT](https://ant.apache.org/manual
 > -v"environment 2017_land_distance, environment 2017_mean_depth" -o"./out/" -r16 -tfalse -m"./out/model.bin"
 
 4 - Retrieve the output as a CSV file in the "out" folder. This table contains the reconstruction probability for each input row and the classification in the 1st to 4th quantile to cluster small, medium, medium-high, and high values.
+
+
+## Docker version
+
+A docker version is [also available on the Docker Hub](https://hub.docker.com/repository/docker/gianpaolocoro/variationalautoencoder/general).
