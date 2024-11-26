@@ -32,6 +32,8 @@ from the project folder (you need to install [ANT](https://ant.apache.org/manual
 
 3 - Retrieve the output as a CSV file in the "out" folder along with the model file (.bin) and the accessory files. This table contains the reconstruction probability for each input row and the classification in the 1st to 4th quantile to cluster small, medium, medium-high, and high values.
 
+* NOTE: the model internally standardizes and normalizes all columns.
+
 
 ## How to test the model
 
@@ -46,6 +48,7 @@ from the project folder (you need to install [ANT](https://ant.apache.org/manual
 
 4 - Retrieve the output as a CSV file in the "out" folder. This table contains the reconstruction probability for each input row and the classification in the 1st to 4th quantile to cluster small, medium, medium-high, and high values.
 
+* NOTE: the model internally standardizes and normalizes all columns wrt to the traning set min and max values.
 
 ## Docker version
 
