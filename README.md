@@ -28,7 +28,7 @@ from the project folder (you need to install [ANT](https://ant.apache.org/manual
 
 > java -cp vae.jar it.cnr.anomaly.JavaVAE
 > -i"./Complete_dataset_mediterranean_sea_2017_2018_2019_2020_2021_2050RCP8.5.csv"
-> -v"environment 2017_land_distance, environment 2017_mean_depth" -h5 -e1000 -o"./out/" -r16 -ttrue
+> -v"environment 2017_land_distance,environment 2017_mean_depth" -h5 -e1000 -o"./out/" -r16 -ttrue
 
 3 - Retrieve the output as a CSV file in the "out" folder along with the model file (.bin) and the accessory files. This table contains the reconstruction probability for each input row and the classification in the 1st to 4th quantile to cluster small, medium, medium-high, and high values.
 
@@ -44,7 +44,7 @@ from the project folder (you need to install [ANT](https://ant.apache.org/manual
 
 > java -cp vae.jar it.cnr.anomaly.JavaVAE
 > -i"./Complete_dataset_mediterranean_sea_2017_2018_2019_2020_2021_2050RCP8.5.csv"
-> -v"environment 2017_land_distance, environment 2017_mean_depth" -o"./out/" -r16 -tfalse -m"./out/model.bin"
+> -v"environment 2017_land_distance,environment 2017_mean_depth" -o"./out/" -r16 -tfalse -m"./out/model.bin"
 
 4 - Retrieve the output as a CSV file in the "out" folder. This table contains the reconstruction probability for each input row and the classification in the 1st to 4th quantile to cluster small, medium, medium-high, and high values.
 
