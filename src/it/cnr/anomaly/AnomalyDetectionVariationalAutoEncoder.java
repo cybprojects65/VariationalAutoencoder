@@ -7,13 +7,16 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.Arrays;
 
 import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.layers.variational.BernoulliReconstructionDistribution;
+import org.deeplearning4j.nn.conf.layers.variational.GaussianReconstructionDistribution;
 import org.deeplearning4j.nn.conf.layers.variational.VariationalAutoencoder;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
+import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.ViewIterator;
@@ -33,6 +36,9 @@ public class AnomalyDetectionVariationalAutoEncoder implements Serializable {
 	private static final Logger log = LoggerFactory.getLogger(AnomalyDetectionVariationalAutoEncoder.class);
 
 	public double[] final_scores;
+	public double[] reconstruction_scores;
+	public double[][] reconstructed_features01;
+	public double[][] reconstructed_features;
 	public MultiLayerNetwork net;
 	public double[] quantiles;
 	public MatrixNormaliser mn = new MatrixNormaliser();
@@ -79,6 +85,7 @@ public class AnomalyDetectionVariationalAutoEncoder implements Serializable {
 																													// 0
 																													// to
 																													// 1)
+						//.reconstructionDistribution(new GaussianReconstructionDistribution(Activation.SIGMOID))
 						.nIn(nFeatures) // Input size
 						.nOut(nFeatures).build()) // Size of the latent variable space: p(z|x)
 				.build();
@@ -101,6 +108,71 @@ public class AnomalyDetectionVariationalAutoEncoder implements Serializable {
 
 	}
 
+	public void train4Reconstruction(double[][] featureMatrix, int nhidden, int nEpochs, File cache) throws Exception {
+
+		// File cache = new File("vae_"+nhidden+"_"+nEpochs+".bin");
+
+		int minibatchSize = featureMatrix.length;
+		int rngSeed = 12345;
+		// see An & Cho for details
+		int nFeatures = featureMatrix[0].length;
+
+		INDArray arr = Nd4j.create(featureMatrix);
+		org.nd4j.linalg.dataset.DataSet d = new org.nd4j.linalg.dataset.DataSet(arr, arr);
+		DataSetIterator trainIter = new ViewIterator(d, minibatchSize);
+
+		// Neural net configuration
+		Nd4j.getRandom().setSeed(rngSeed);
+
+		// Neural net configuration
+		// x->(LReLU)->h->h/2->z->(identity)->h/2->h->(sigmoid)->Bernoulli->p(x)
+		MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder().seed(rngSeed).updater(new Adam(1e-3))
+				.weightInit(WeightInit.XAVIER).l2(1e-4).list()
+				.layer(new VariationalAutoencoder.Builder().activation(Activation.LEAKYRELU).encoderLayerSizes(nhidden)
+						.encoderLayerSizes(nhidden / 2) // 2 encoder layers
+						.decoderLayerSizes(nhidden / 2).decoderLayerSizes(nhidden) // 2 decoder layers
+						.pzxActivationFunction(Activation.IDENTITY) // p(z|data) activation function
+						//.reconstructionDistribution(new BernoulliReconstructionDistribution(Activation.SIGMOID)) // Bernoulli
+																													// reconstruction
+																													// distribution
+																													// +
+																													// sigmoid
+																													// activation
+																													// -
+																													// for
+																													// modelling
+																													// binary
+																													// data
+																													// (or
+																													// data
+																													// in
+																													// range
+																													// 0
+																													// to
+																													// 1)
+						.reconstructionDistribution(new GaussianReconstructionDistribution(Activation.SIGMOID))
+						.nIn(nFeatures) // Input size
+						.nOut(nFeatures).build()) // Size of the latent variable space: p(z|x)
+				.build();
+
+		// Train model:
+
+		net = new MultiLayerNetwork(conf);
+		net.init();
+		log.warn(net.summary());
+
+		System.out.println("Starting training...");
+		for (int i = 0; i < nEpochs; i++) {
+			net.pretrain(trainIter);
+		}
+
+		if (cache != null) {
+			net.save(cache);
+			System.out.println("Model cached to " + cache.getAbsolutePath());
+		}
+
+	}
+	
 	public static AnomalyDetectionVariationalAutoEncoder load(File cacheFile) throws Exception {
 		
 		File cacheFileMatrix = new File (cacheFile.getParent(),cacheFile.getName()+".mat");
@@ -156,30 +228,52 @@ public class AnomalyDetectionVariationalAutoEncoder implements Serializable {
 		    
 	}
 	
-	public double[] test1by1(double[][] featureMatrix, int reconstructionNumSamples) throws Exception {
+	public double[][] generate(double[][] featureMatrix, int reconstructionNumSamples) throws Exception {
 
 		org.deeplearning4j.nn.layers.variational.VariationalAutoencoder vae = (org.deeplearning4j.nn.layers.variational.VariationalAutoencoder) net
 				.getLayer(0);
+		
+		INDArray arr = Nd4j.create(featureMatrix);
+		org.nd4j.linalg.dataset.DataSet d = new org.nd4j.linalg.dataset.DataSet(arr, arr);
+		DataSetIterator trainIter = new ViewIterator(d, featureMatrix.length);
+		DataSet ds = trainIter.next();
+		INDArray features = ds.getFeatures();
+		
+		// Mean of the latent distribution
+		INDArray latentMean = vae.activate( features, false, LayerWorkspaceMgr.noWorkspaces() );
+		
+		double[][] latentMatrix = latentMean.toDoubleMatrix();
+		
+		// Generate reconstruction from latent means
+	    INDArray reconstruction = vae.generateAtMeanGivenZ(latentMean);
+	    //INDArray reconstruction = vae.generateRandomGivenZ(latentMean,LayerWorkspaceMgr.noWorkspaces());
+	    
+	    reconstructed_features01 = reconstruction.toDoubleMatrix();
+	    reconstructed_features = mn.denormalize_destandardize(reconstructed_features01);
+	    INDArray reconstructionProbabilityEachExample = vae.reconstructionProbability(features, reconstructionNumSamples);
+	    INDArray reconstructionLogErrorEachExample = vae.reconstructionLogProbability(features, reconstructionNumSamples);
+	    double[][] reconstructedProbabilityMatrix = reconstructionProbabilityEachExample.toDoubleMatrix();
+	    double[][] reconstructedLogErrorMatrix = reconstructionLogErrorEachExample.toDoubleMatrix();
+	    
+		int nRows = features.rows();
+		
+		
 		final_scores = new double[featureMatrix.length];
-		System.out.println("Features vs Score");
-		for (int j = 0; j < featureMatrix.length; j++) {
-			double[][] featureMatrix1 = MathOperations.subsetRows(featureMatrix, j, j);
-			INDArray arr1 = Nd4j.create(featureMatrix1);
-			org.nd4j.linalg.dataset.DataSet d1 = new org.nd4j.linalg.dataset.DataSet(arr1, arr1);
-			DataSetIterator trainIter1 = new ViewIterator(d1, featureMatrix1.length);
-			DataSet ds1 = trainIter1.next();
-			INDArray features1 = ds1.getFeatures();
-			INDArray reconstructionErrorEachExample1 = vae.reconstructionLogProbability(features1,
-					reconstructionNumSamples);
-			double final_score = reconstructionErrorEachExample1.getDouble(0);
-			final_scores[j] = final_score;
-			//System.out.println(features1.getDouble(0)+","+featureMatrix1[0][0]+","+final_scores[j]);
+		reconstruction_scores = new double[featureMatrix.length];
+		
+		for (int j = 0; j < nRows; j++) {
+			//System.out.println("Original vector nstd: "+Arrays.toString(featureMatrix[j]));
+			//System.out.println("Reconstructed vector nstd: "+Arrays.toString(reconstructed_features01[j]));
+			//System.out.println("Reconstructed vector: "+Arrays.toString(reconstructed_features[j]));
+			//System.out.println("Rec. Probability: "+Arrays.toString(reconstructedProbabilityMatrix[j]));
+			final_scores[j] = reconstructedLogErrorMatrix[j][0];
+			reconstruction_scores[j] = reconstructedProbabilityMatrix[j][0];
+			//reconstructed_features[j] = reconstructedFeatureMatrix[j];
 		}
 		
-		System.out.println("");
-		return final_scores;
+		return reconstructed_features;
 	}
-
+	
 	public double[] test(double[][] featureMatrix, int reconstructionNumSamples) throws Exception {
 
 		org.deeplearning4j.nn.layers.variational.VariationalAutoencoder vae = (org.deeplearning4j.nn.layers.variational.VariationalAutoencoder) net

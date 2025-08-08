@@ -362,6 +362,41 @@ public class MathOperations {
 		return matrix_std;
 	}
 
+	public double[][] destandardize(double[][] matrix, double[] meansVec, double[] sdVec) {
+
+		int ncols = matrix[0].length;
+		int mrows = matrix.length;
+
+		if ((meansVec == null) && (sdVec == null)) {
+
+			meansVec = new double[ncols];
+			sdVec = new double[ncols];
+
+			for (int i = 0; i < ncols; i++) {
+				meansVec[i] = columnMean(matrix, i);
+				sdVec[i] = columnSD(matrix, i);
+			}
+			means = meansVec;
+			sds = sdVec;
+		}else {
+			means = meansVec;
+			sds = sdVec;
+		}
+
+		double[][] matrix_std = new double[matrix.length][matrix[0].length];
+		for (int i = 0; i < ncols; i++) {
+			double mean_i = meansVec[i];
+			double sd_i = sdVec[i];
+			for (int j = 0; j < mrows; j++) {
+
+				matrix_std[j][i] = (matrix[j][i]*sd_i) + mean_i;
+
+			}
+		}
+
+		return matrix_std;
+	}
+	
 	double[] mins;
 	double[] maxs;
 
@@ -401,6 +436,42 @@ public class MathOperations {
 		return matrix_std;
 	}
 
+	public double[][] denormalize01(double[][] matrix, double[] mins, double[] maxs) {
+
+		int ncols = matrix[0].length;
+		int mrows = matrix.length;
+
+		if ((mins == null) && (maxs == null)) {
+
+			mins = new double[ncols];
+			maxs = new double[ncols];
+
+			for (int i = 0; i < ncols; i++) {
+				mins[i] = columnMin(matrix, i);
+				maxs[i] = columnMax(matrix, i);
+			}
+			this.mins = mins;
+			this.maxs = maxs;
+		}else {
+			this.mins = mins;
+			this.maxs = maxs;
+		}
+			
+
+		double[][] matrix_std = new double[matrix.length][matrix[0].length];
+		for (int i = 0; i < ncols; i++) {
+			double min_i = mins[i];
+			double max_i = maxs[i];
+			for (int j = 0; j < mrows; j++) {
+
+				matrix_std[j][i] = (matrix[j][i]*(max_i - min_i) ) +min_i;  
+
+			}
+		}
+
+		return matrix_std;
+	}
+	
 	public double[][] normalize01(double[][] matrix) {
 		return normalize01(matrix, null, null);
 	}

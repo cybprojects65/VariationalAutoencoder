@@ -81,6 +81,17 @@ public class MatrixNormaliser implements Serializable{
 		return features01;
 	}
 	
+	public double [][] denormalize_destandardize(double [][] features) throws Exception{
+	
+		MathOperations math = new MathOperations();
+		
+		double [][] features01 = math.denormalize01(features, mins, maxs);
+		double [][] featuresDeStd = math.destandardize(features01, means, sds);
+		
+		
+		return featuresDeStd;
+	}
+
 	public static MatrixNormaliser load(File cacheFile) throws Exception{
 		
 		FileInputStream fileOut = new FileInputStream(cacheFile.getAbsolutePath());

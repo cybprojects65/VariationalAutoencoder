@@ -240,4 +240,45 @@ public class JavaVAE {
 		 
 	}
 
+	public void saveReconstruction(double [][] features, double [][] reconstructedfeatures, String[] headers, double []scores, double []probabilities, String[] percentiles, File outputFile){
+		
+		try {
+		BufferedWriter bf = new BufferedWriter(new FileWriter(outputFile));
+				
+		System.out.println("Saving results to file");
+		String head = Arrays.toString(headers).replace("[", "").replace("]", "").replaceAll(" +", " ");
+		String headRec = ",";
+		for (int i = 0;i<headers.length;i++) {
+			
+			headRec +=headers[i]+"_rec,";
+					
+		}
+		
+		head += headRec+"probability,reconstruction_log_probability,percentile";
+		bf.append(head+"\n");
+		
+		for (int i=0;i<features.length;i++) {
+			
+			for (int j=0;j<features[0].length;j++) {
+				bf.append(features[i][j]+",");
+			}
+			for (int j=0;j<features[0].length;j++) {
+				bf.append(reconstructedfeatures[i][j]+",");
+			}
+			bf.append(probabilities[i]+","+scores[i]+","+percentiles[i]);
+			//System.out.println(features[i][0]+","+scores[i]);
+			if (i<(features.length-1))
+				bf.append("\n");
+		}
+		bf.close();
+		System.out.println("Scores and output written to "+outputFile.getAbsolutePath());
+		}catch(Exception e) {
+			
+			e.printStackTrace();
+			System.out.println("Error with the output file "+e.getLocalizedMessage());
+			
+		}
+		 
+	}
+
 }
