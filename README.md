@@ -4,7 +4,7 @@ A VAE implementation in Java that can learn from the column of an input table an
 
 ## Preparation
 
-Create a standalone uber-JAR containing all dependencies from the GIT repository or download the [pre-coocked JAR file](https://data.d4science.org/shub/E_RmlXSjJSbFVhZmVyT25YTFJJYlY1a3BJRWc0T0xueUVIOWNXamR3dStNV3RMZDl2WThJRE5rckY0b1cwWVU1Kw==).
+Create a standalone uber-JAR containing all dependencies from the GIT repository or download the [pre-coocked JAR file](https://cnrsc-my.sharepoint.com/:u:/g/personal/gianpaolo_coro_cnr_it/EflMlMRFbBtHkmNKT3zZDKgBEbeTO3B3sivg3kYAKFqviA?e=4sJNWS).
 To create the uber-Jar execute:
 
     ant
