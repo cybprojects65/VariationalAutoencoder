@@ -30,7 +30,7 @@ from the project folder (you need to install [ANT](https://ant.apache.org/manual
 > -i"./Complete_dataset_mediterranean_sea_2017_2018_2019_2020_2021_2050RCP8.5.csv"
 > -v"environment 2017_land_distance, environment 2017_mean_depth" -h5 -e1000 -o"./out/" -r16 -ttrue
 
-3 - Retrieve the output as a CSV file in the "out" folder along with the model file (.bin) and the accessory files. This table contains the reconstruction probability for each input row and the classification in the 1st to 4th quantile to cluster small, medium, medium-high, and high values.
+3 - Retrieve the output as a CSV file (classification.csv) in the "out" folder along with the model file (.bin) and the accessory files. This table contains the reconstruction probability for each input row and the classification in the 1st to 4th quantile to cluster small, medium, medium-high, and high values.
 
 * NOTE: the model internally standardizes and normalizes all columns.
 
@@ -46,9 +46,28 @@ from the project folder (you need to install [ANT](https://ant.apache.org/manual
 > -i"./Complete_dataset_mediterranean_sea_2017_2018_2019_2020_2021_2050RCP8.5.csv"
 > -v"environment 2017_land_distance, environment 2017_mean_depth" -o"./out/" -r16 -tfalse -m"./out/model.bin"
 
-4 - Retrieve the output as a CSV file in the "out" folder. This table contains the reconstruction probability for each input row and the classification in the 1st to 4th quantile to cluster small, medium, medium-high, and high values.
+4 - Retrieve the output as a CSV file (classification_projection.csv) in the "out" folder. This table contains the reconstruction probability for each input row and the classification in the 1st to 4th quantile to cluster small, medium, medium-high, and high values.
 
 * NOTE: the model internally standardizes and normalizes all columns wrt to the traning set min and max values.
+
+
+## Generative VAE
+
+This modality uses VAE to generate the reconstructed version of each input vector, which represents the "most typical" reconstruction, like a denoised version. 
+
+1 - Prepare a table as a CSV file. See [Complete_dataset_mediterranean_sea_2017_2018_2019_2020_2021_2050RCP8.5.csv](https://github.com/cybprojects65/VariationalAutoencoder/blob/main/Complete_dataset_mediterranean_sea_2017_2018_2019_2020_2021_2050RCP8.5.csv)  as an example.
+
+2 - Execute the Jar file as follows:
+
+> java -cp vae.jar it.cnr.anomaly.JavaVAEGenerator 
+> -i"./Complete_dataset_mediterranean_sea_2017_2018_2019_2020_2021_2050RCP8.5.csv"
+> -v"environment 2017_sea-surface_temperature,environment 2017_sea-surface_salinity" -h10 -e1000 -o"./out/" -r16 -ttrue
+
+3 - Retrieve the output as a CSV file (reconstruction.csv) in the "out" folder. This table contains the original vectors, the reconstructed vectors (with the _rec suffix), the reconstruction probability and log probability for each input row and the classification in the 1st to 4th quantile to cluster small, medium, medium-high, and high values.
+
+* NOTE 1: in this modality, the VAE should better learn a non-compressed version of the input, i.e., the first hidden layer should contain a number of hidden nodes (h) higher than the number of features.
+
+* NOTE 2: the model internally standardizes and normalizes all columns wrt to the traning set min and max values.
 
 ## Docker version
 
