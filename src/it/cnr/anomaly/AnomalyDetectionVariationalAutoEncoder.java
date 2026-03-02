@@ -3,11 +3,11 @@ package it.cnr.anomaly;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.io.Serializable;
-import java.util.Arrays;
 
 import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
@@ -26,6 +26,7 @@ import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.learning.config.Adam;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.impl.SimpleLogger;
 
 public class AnomalyDetectionVariationalAutoEncoder implements Serializable {
 
@@ -63,9 +64,11 @@ public class AnomalyDetectionVariationalAutoEncoder implements Serializable {
 		// x->(LReLU)->h->h/2->z->(identity)->h/2->h->(sigmoid)->Bernoulli->p(x)
 		MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder().seed(rngSeed).updater(new Adam(1e-3))
 				.weightInit(WeightInit.XAVIER).l2(1e-4).list()
-				.layer(new VariationalAutoencoder.Builder().activation(Activation.LEAKYRELU).encoderLayerSizes(nhidden)
-						.encoderLayerSizes(nhidden / 2) // 2 encoder layers
-						.decoderLayerSizes(nhidden / 2).decoderLayerSizes(nhidden) // 2 decoder layers
+				//.layer(new VariationalAutoencoder.Builder().activation(Activation.LEAKYRELU).encoderLayerSizes(nhidden)
+				.layer(new VariationalAutoencoder.Builder().activation(Activation.LEAKYRELU).encoderLayerSizes(nhidden,nhidden / 2)
+						//.encoderLayerSizes(nhidden / 2) // 2 encoder layers
+						//.decoderLayerSizes(nhidden / 2).decoderLayerSizes(nhidden) // 2 decoder layers
+						.decoderLayerSizes(nhidden / 2,nhidden)
 						.pzxActivationFunction(Activation.IDENTITY) // p(z|data) activation function
 						.reconstructionDistribution(new BernoulliReconstructionDistribution(Activation.SIGMOID)) // Bernoulli
 																													// reconstruction
@@ -126,46 +129,43 @@ public class AnomalyDetectionVariationalAutoEncoder implements Serializable {
 
 		// Neural net configuration
 		// x->(LReLU)->h->h/2->z->(identity)->h/2->h->(sigmoid)->Bernoulli->p(x)
+		/*
 		MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder().seed(rngSeed).updater(new Adam(1e-3))
 				.weightInit(WeightInit.XAVIER).l2(1e-4).list()
 				.layer(new VariationalAutoencoder.Builder().activation(Activation.LEAKYRELU).encoderLayerSizes(nhidden)
 						.encoderLayerSizes(nhidden / 2) // 2 encoder layers
 						.decoderLayerSizes(nhidden / 2).decoderLayerSizes(nhidden) // 2 decoder layers
 						.pzxActivationFunction(Activation.IDENTITY) // p(z|data) activation function
-						//.reconstructionDistribution(new BernoulliReconstructionDistribution(Activation.SIGMOID)) // Bernoulli
-																													// reconstruction
-																													// distribution
-																													// +
-																													// sigmoid
-																													// activation
-																													// -
-																													// for
-																													// modelling
-																													// binary
-																													// data
-																													// (or
-																													// data
-																													// in
-																													// range
-																													// 0
-																													// to
-																													// 1)
 						.reconstructionDistribution(new GaussianReconstructionDistribution(Activation.SIGMOID))
 						.nIn(nFeatures) // Input size
-						.nOut(nFeatures).build()) // Size of the latent variable space: p(z|x)
+						.nOut(nFeatures).build()) // Size of the latent variable space: p(z|x) //TODO: learn a compressed version of the input
 				.build();
-
+        */
+		MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder().seed(rngSeed).updater(new Adam(1e-3))
+				.weightInit(WeightInit.XAVIER).l2(1e-4).list()
+				.layer(new VariationalAutoencoder.Builder().activation(Activation.LEAKYRELU)
+						.encoderLayerSizes(nhidden, nhidden / 2)
+						.decoderLayerSizes(nhidden / 2, nhidden) // 2 decoder layers
+						.pzxActivationFunction(Activation.IDENTITY) // p(z|data) activation function
+						.reconstructionDistribution(new GaussianReconstructionDistribution(Activation.SIGMOID))
+						.nIn(nFeatures) // Input size
+						.nOut(nFeatures).build()) // Size of the latent variable space: p(z|x) //TODO: learn a compressed version of the input
+				.build();
+		
 		// Train model:
 
 		net = new MultiLayerNetwork(conf);
 		net.init();
 		log.warn(net.summary());
 
-		System.out.println("Starting training...");
-		for (int i = 0; i < nEpochs; i++) {
-			net.pretrain(trainIter);
-		}
+		System.out.println("Starting training for reconstruction ...");
+		
+		
 
+		    for (int i = 0; i < nEpochs; i++) {
+		    	silenceSl4j(() -> net.pretrain(trainIter));
+    		}
+		
 		if (cache != null) {
 			net.save(cache);
 			System.out.println("Model cached to " + cache.getAbsolutePath());
@@ -337,4 +337,29 @@ public class AnomalyDetectionVariationalAutoEncoder implements Serializable {
 		return binarymatrix;
 	}
 
+	public static void silenceSl4j(Runnable r) {
+	    try {
+	        // Access SimpleLogger's private static field "TARGET_STREAM"
+	    	java.lang.reflect.Field targetField = SimpleLogger.class.getDeclaredField("TARGET_STREAM");
+	        targetField.setAccessible(true);
+
+	        // Save the original stream
+	        PrintStream original = (PrintStream) targetField.get(null);
+
+	        // Replace it with a void stream
+	        PrintStream voidStream = new PrintStream(OutputStream.nullOutputStream());
+	        targetField.set(null, voidStream);
+
+	        try {
+	            r.run();   // Run code with logging silenced
+	        } finally {
+	            // Restore original stream
+	            targetField.set(null, original);
+	        }
+
+	    } catch (Exception e) {
+	        throw new RuntimeException(e);
+	    }
+	}
+	
 }
